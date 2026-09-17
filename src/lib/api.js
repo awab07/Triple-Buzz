@@ -10,7 +10,7 @@
 // port; a production build always uses the deployed backend.
 export const API_BASE =
   import.meta.env.VITE_API_BASE ||
-  (import.meta.env.DEV ? 'http://localhost:5000' : 'https://triple-buzz-store-backend-one.vercel.app')
+  (import.meta.env.DEV ? 'http://localhost:5000' : 'https://portal.triplebuzzsmokeshop.com')
 
 // Public by design — Authorize.Net's Accept.js is meant to run with these
 // values exposed in the browser. The actual secret (Transaction Key) never
