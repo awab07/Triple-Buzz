@@ -302,7 +302,7 @@ export default function Cart() {
                   key={item.slug}
                   className="flex items-start gap-4 rounded-lg border border-neutral-200 p-4"
                 >
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-md bg-neutral-100 p-2">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-md bg-neutral-100 p-2">
                     <img src={item.image} alt={item.name} className="h-full w-full object-contain" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -431,7 +431,7 @@ export default function Cart() {
               {items.map((item) => (
                 <div key={item.slug} className="rounded-xl border border-neutral-200 p-5">
                   <div className="flex flex-wrap items-start gap-4">
-                    <div className="grid h-20 w-20 shrink-0 place-items-center rounded-md bg-neutral-100 p-2">
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-md bg-neutral-100 p-2">
                       <img src={item.image} alt={item.name} className="h-full w-full object-contain" />
                     </div>
 
