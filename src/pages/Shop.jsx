@@ -91,18 +91,31 @@ export default function Shop() {
     setOpenFilters((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  // Shop stays mounted across in-app navigation to /shop (same route, just
-  // different query params), so a category picked earlier wouldn't
-  // otherwise clear when the user lands here again via a plain "/shop" link
-  // — resync the filter from the URL on every navigation, not just the
-  // first one.
-  useEffect(() => {
+  // Shop stays mounted across in-app navigation to /shop or /collections/:slug
+  // (same component, just different route params), so a category picked
+  // earlier wouldn't otherwise clear when the user lands here again — resync
+  // the filter from the URL on every navigation, not just the first one.
+  //
+  // This resync used to happen in a useEffect, which runs *after* the browser
+  // has already painted a render that still held the previous collection's
+  // selectedCategories. Navigating straight from "All" (or another
+  // collection) into a new one meant that stale render briefly showed the
+  // wrong product list before the effect caught up — a visible flash of "all
+  // products" (or the old collection) right before the correct one appeared.
+  // Updating state directly during render instead (React's documented
+  // pattern for "adjusting state when a prop changes") makes React redo the
+  // render with the corrected state before anything reaches the screen, so
+  // there's nothing stale to flash.
+  const urlSyncKey = `${collectionSlug || ''}::${searchParams.toString()}`
+  const [lastUrlSyncKey, setLastUrlSyncKey] = useState(urlSyncKey)
+  if (urlSyncKey !== lastUrlSyncKey) {
+    setLastUrlSyncKey(urlSyncKey)
     const raw = resolveRawCategoriesFromUrl(collectionSlug, searchParams.get('category'))
     setSelectedCategories(raw)
     setSelectedLabels(deriveSelectedLabels(raw))
     setSearchQuery(searchParams.get('search') || '')
     setPage(Number(searchParams.get('page')) || 1)
-  }, [collectionSlug, searchParams])
+  }
 
   // Checkboxes show friendly leaf labels ("Batteries"), same as the header —
   // each one resolves to one or more raw backend category values via
@@ -181,7 +194,16 @@ export default function Shop() {
   }, [selectedCategoriesKey])
 
   const baseProducts = categoryProducts ?? products
-  const isLoadingList = categoryProducts === null ? loading : categoryLoading
+  // A category is selected the instant selectedCategories updates (see the
+  // render-time URL sync above), but categoryProducts/categoryLoading only
+  // flip on the *next* commit, once the fetch effect for it has actually
+  // started. Keying this off selectedCategories.length instead of
+  // categoryProducts === null closes that gap — otherwise this would still
+  // read the global (already-loaded) `loading` flag for one render and fall
+  // through to rendering baseProducts, which is still the unfiltered
+  // `products` list at that point.
+  const isLoadingList =
+    selectedCategories.length > 0 ? categoryProducts === null || categoryLoading : loading
   const listError = categoryProducts === null ? error : categoryError
 
   const filtered = useMemo(() => {
