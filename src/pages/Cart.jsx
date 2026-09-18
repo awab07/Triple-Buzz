@@ -745,11 +745,6 @@ export default function Cart() {
                 </>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    className="rounded-md border border-neutral-200 px-3 py-2 text-sm text-ink outline-none focus:ring-2 focus:ring-brand-gold/40"
-                  />
                   <div className="flex gap-2">
                     <input
                       type="text"
