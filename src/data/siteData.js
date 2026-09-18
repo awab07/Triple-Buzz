@@ -170,6 +170,20 @@ export const categoryFilterMap = {
   // unmapped, per the note above, rather than guessing a wrong match.
 }
 
+// Maps a raw backend category value (e.g. "GUMMIES", straight off a
+// product/category record) back to the clean leaf label that owns it (e.g.
+// "Gummies"), so components working with raw category data — like
+// CategoryGrid's homepage tiles — can still link to the clean
+// "/collections/:slug" URL instead of falling back to the raw
+// "?category=" query form. Iterates shopLeafCategories (not top-level
+// labels) so e.g. "GUMMIES" resolves to "Gummies" rather than the broader
+// "THC" it also appears under in categoryFilterMap.
+export const rawCategoryToSlug = Object.fromEntries(
+  shopLeafCategories.flatMap((label) =>
+    (categoryFilterMap[label] || [label]).map((raw) => [raw, categorySlugs[label]])
+  )
+)
+
 // Copy for the Shop page's category heading — keyed by the same top-level
 // labels used in `shopCategories`/`categoryFilterMap` above, so picking a
 // category (from the header mega menu or the in-page checkboxes) can show an

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import SectionHeader from './SectionHeader'
 import { useProducts } from '../context/ProductsContext'
+import { rawCategoryToSlug } from '../data/siteData'
 
 export default function CategoryGrid() {
   const { categories, loading } = useProducts()
@@ -14,7 +15,15 @@ export default function CategoryGrid() {
         {categories.map((cat) => (
           <Link
             key={cat.name}
-            to={`/shop?category=${encodeURIComponent(cat.name)}`}
+            // Clean "/collections/:slug" URL when this raw category value
+            // (e.g. "GUMMIES") maps to a known leaf label — falls back to
+            // the raw query form only for an unrecognized value, same
+            // pattern CategoryShowcase already uses for its own links.
+            to={
+              rawCategoryToSlug[cat.name]
+                ? `/collections/${rawCategoryToSlug[cat.name]}`
+                : `/shop?category=${encodeURIComponent(cat.name)}`
+            }
             className="group flex flex-col gap-2 rounded-md border border-neutral-200 p-2.5 transition-colors hover:border-ink"
           >
             <div className="aspect-square overflow-hidden rounded bg-black">
