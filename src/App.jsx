@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import useTabAttention from './hooks/useTabAttention'
 import ScrollToTop from './components/ScrollToTop'
+import Canonical from './components/Canonical'
 import AnnouncementBar from './components/AnnouncementBar'
 import Header from './components/Header'
 import Footer from './components/Footer'
@@ -42,6 +43,7 @@ export default function App() {
       <CartDrawer />
       <RecentPurchasePopup />
       <ScrollToTop />
+      <Canonical />
       <AnnouncementBar />
       <Header />
       <Routes>
