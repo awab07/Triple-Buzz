@@ -159,12 +159,19 @@ export function removeAvatar() {
 
 /* ---------- Products ---------- */
 
-export function fetchProducts({ page = 1, site = 'triplebuzz', limit = 100, search, category } = {}) {
+export function fetchProducts({ page = 1, site = 'triplebuzz', limit = 100, search, category, imagesFirst } = {}) {
   const params = new URLSearchParams({ page, limit })
   if (site) params.set('site', site)
+  // List products that have a photo before the ones that don't.
+  if (imagesFirst) params.set('imagesFirst', 'true')
   if (search) params.set('search', search)
   if (category) params.set('category', category)
   return api(`/Product/allproducts?${params.toString()}`)
+}
+
+// Every category with its full product count and a representative photo.
+export function fetchCategorySummary(site = 'triplebuzz') {
+  return api(`/Product/categories?site=${site}`)
 }
 
 export function fetchProductById(id) {

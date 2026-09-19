@@ -1,10 +1,18 @@
 import { Link } from 'react-router-dom'
 import SectionHeader from './SectionHeader'
+import ImagePlaceholder from './ImagePlaceholder'
 import { useProducts } from '../context/ProductsContext'
+import { useCategorySummary } from '../hooks/useCategorySummary'
 import { rawCategoryToSlug } from '../data/siteData'
 
 export default function CategoryGrid() {
-  const { categories, loading } = useProducts()
+  const { categories: loadedCategories, loading: productsLoading } = useProducts()
+  const { categories: summary, loading: summaryLoading } = useCategorySummary()
+
+  // Prefer the backend's whole-catalogue summary; fall back to what's been
+  // loaded into ProductsContext if it isn't available.
+  const categories = summary ?? loadedCategories
+  const loading = summaryLoading || (summary === null && productsLoading)
 
   if (!loading && categories.length === 0) return null
 
@@ -27,11 +35,15 @@ export default function CategoryGrid() {
             className="group flex flex-col gap-2 rounded-md border border-neutral-200 p-2.5 transition-colors hover:border-ink"
           >
             <div className="aspect-square overflow-hidden rounded bg-black">
-              <img
-                src={cat.image}
-                alt={cat.name}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-              />
+              {cat.image ? (
+                <img
+                  src={cat.image}
+                  alt={cat.name}
+                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              ) : (
+                <ImagePlaceholder label={cat.name} />
+              )}
             </div>
             <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-400">
               {cat.count} Products

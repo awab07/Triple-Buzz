@@ -4,6 +4,7 @@ import { FaHeart } from 'react-icons/fa'
 import { useCart } from '../context/CartContext'
 import { useWishlist } from '../context/WishlistContext'
 import { StarIcon } from './Icons'
+import ImagePlaceholder from './ImagePlaceholder'
 import { getDisplaySold, getDisplayRating } from '../utils/socialProof'
 
 // collectionSlug is passed by any grid that represents one specific
@@ -22,11 +23,15 @@ export default function ProductCard({ product, flat = false, collectionSlug }) {
     <div className={`group flex flex-col bg-white ${flat ? '' : 'overflow-hidden rounded-md border border-neutral-200 card-shadow'}`}>
       <div className="relative">
         <Link to={productHref} className="block aspect-square overflow-hidden bg-neutral-100 p-4">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
-          />
+          {product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <ImagePlaceholder />
+          )}
           {product.soldOut && (
             <span className="absolute left-2 top-2  bg-ink px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">
               Sold Out

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchProducts } from '../lib/api'
 
 const ProductsContext = createContext(null)
@@ -39,23 +39,30 @@ const PAGE_SIZE = 100
 
 export function ProductsProvider({ children }) {
   const [products, setProducts] = useState([])
-  const [page, setPage] = useState(0)
+  // Refs, not state: several components can call loadMore() in the same
+  // render, and a state-backed `page`/`loadingMore` is stale for all of them —
+  // they'd each fetch the same next page and append it twice.
+  const pageRef = useRef(0)
+  const loadingMoreRef = useRef(false)
   const [totalCount, setTotalCount] = useState(Infinity)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
 
+  // Products with a photo come first (`imagesFirst`) — many POS-synced items
+  // have none yet, and plain newest-first buries the presentable ones.
+  //
   // The catalogue (2,000+ items once Lightspeed is synced in) is too big to
   // load in one shot, so this only ever fetches one backend page up front.
   // Everything else (Shop's pagination, ProductDetail's slug lookup) pulls
   // more pages on demand via loadMore() as it needs them.
   useEffect(() => {
     let cancelled = false
-    fetchProducts({ page: 1, site: 'triplebuzz', limit: PAGE_SIZE })
+    fetchProducts({ page: 1, site: 'triplebuzz', limit: PAGE_SIZE, imagesFirst: true })
       .then((data) => {
         if (cancelled) return
         setProducts((data.products ?? []).map(normalizeProduct))
-        setPage(1)
+        pageRef.current = 1
         setTotalCount(typeof data.totalItems === 'number' ? data.totalItems : Infinity)
       })
       .catch((err) => {
@@ -72,17 +79,25 @@ export function ProductsProvider({ children }) {
   const hasMore = products.length < totalCount
 
   const loadMore = () => {
-    if (loading || loadingMore || !hasMore) return
+    if (loading || loadingMoreRef.current || !hasMore) return
+    loadingMoreRef.current = true
     setLoadingMore(true)
-    const nextPage = page + 1
-    fetchProducts({ page: nextPage, site: 'triplebuzz', limit: PAGE_SIZE })
+    const nextPage = pageRef.current + 1
+    fetchProducts({ page: nextPage, site: 'triplebuzz', limit: PAGE_SIZE, imagesFirst: true })
       .then((data) => {
-        setProducts((prev) => [...prev, ...(data.products ?? []).map(normalizeProduct)])
-        setPage(nextPage)
+        setProducts((prev) => {
+          const seen = new Set(prev.map((p) => p.backendId))
+          const fresh = (data.products ?? []).map(normalizeProduct).filter((p) => !seen.has(p.backendId))
+          return [...prev, ...fresh]
+        })
+        pageRef.current = nextPage
         if (typeof data.totalItems === 'number') setTotalCount(data.totalItems)
       })
       .catch((err) => setError(err.message || 'Could not load more products.'))
-      .finally(() => setLoadingMore(false))
+      .finally(() => {
+        loadingMoreRef.current = false
+        setLoadingMore(false)
+      })
   }
 
   const categories = useMemo(() => {
@@ -91,7 +106,11 @@ export function ProductsProvider({ children }) {
       if (!byName.has(p.category)) {
         byName.set(p.category, { name: p.category, count: 0, image: p.image })
       }
-      byName.get(p.category).count += 1
+      const entry = byName.get(p.category)
+      entry.count += 1
+      // The first product in a category often has no photo (Lightspeed items
+      // without an upload) — use the first one that does.
+      if (!entry.image && p.image) entry.image = p.image
     }
     return Array.from(byName.values())
   }, [products])
