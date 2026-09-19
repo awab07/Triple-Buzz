@@ -5,6 +5,8 @@ import ProductCard from '../components/ProductCard'
 import AreasServed from '../components/AreasServed'
 import { useProducts, normalizeProduct } from '../context/ProductsContext'
 import { fetchProducts } from '../lib/api'
+import { useCategorySummary } from '../hooks/useCategorySummary'
+import { getPreloadedFirstPage } from '../utils/preloadCategories'
 import {
   categoryPageCopy,
   defaultShopPageCopy,
@@ -23,6 +25,20 @@ const CATEGORY_FETCH_LIMIT = 500
 
 const RATINGS = [5, 4, 3, 2, 1]
 const PAGE_WINDOW_SIZE = 4
+
+// Every raw backend category value the curated checkbox labels already cover.
+// Any category the backend reports that isn't in here (a brand-new one from
+// the POS, say) gets its own checkbox automatically — see `extraCategories`.
+const COVERED_RAW_CATEGORIES = new Set(
+  shopLeafCategories.flatMap((label) => categoryFilterMap[label] || [label])
+)
+
+// Raw POS values are ALL CAPS ("SNACKS"); short ones are acronyms ("THC") so
+// leave those alone and title-case the rest.
+function displayCategoryName(raw) {
+  if (raw !== raw.toUpperCase() || raw.length <= 4) return raw
+  return raw.toLowerCase().replace(/(^|[\s,/-])([a-z])/g, (_, sep, ch) => sep + ch.toUpperCase())
+}
 
 // Which leaf checkboxes a raw-value selection corresponds to — a label
 // "counts" only if *every* raw value it maps to is present in the selection,
@@ -50,7 +66,8 @@ function resolveRawCategoriesFromUrl(collectionSlug, categoryParam) {
 }
 
 export default function Shop() {
-  const { products, loading, loadingMore, hasMore, loadMore, error } = useProducts()
+  const { products, loading, loadingMore, hasMore, loadMore, error, categoryNames } = useProducts()
+  const { categories: categorySummary } = useCategorySummary()
   const { slug: collectionSlug } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const initialRawCategories = resolveRawCategoriesFromUrl(collectionSlug, searchParams.get('category'))
@@ -128,7 +145,27 @@ export default function Shop() {
       ? selectedLabels.filter((l) => l !== label)
       : [...selectedLabels, label]
     setSelectedLabels(nextLabels)
-    setSelectedCategories([...new Set(nextLabels.flatMap((l) => categoryFilterMap[l] || [l]))])
+    // Keep any checked "extra" (auto-listed) categories — they aren't tied to
+    // a label, so they'd otherwise be dropped whenever a label is toggled.
+    const extraSelected = selectedCategories.filter((v) => !COVERED_RAW_CATEGORIES.has(v))
+    setSelectedCategories([
+      ...new Set([...nextLabels.flatMap((l) => categoryFilterMap[l] || [l]), ...extraSelected]),
+    ])
+    setPage(1)
+  }
+
+  // Categories the backend has that no curated label covers — new ones from
+  // the POS show up here without any code change. Falls back to whatever's
+  // in the loaded products if the backend summary isn't available.
+  const extraCategories = useMemo(() => {
+    const names = categorySummary ? categorySummary.map((c) => c.name) : categoryNames
+    return [...new Set(names)]
+      .filter((name) => name && !COVERED_RAW_CATEGORIES.has(name))
+      .sort((a, b) => a.localeCompare(b))
+  }, [categorySummary, categoryNames])
+
+  const toggleExtraCategory = (raw) => {
+    setSelectedCategories((prev) => (prev.includes(raw) ? prev.filter((v) => v !== raw) : [...prev, raw]))
     setPage(1)
   }
 
@@ -145,6 +182,9 @@ export default function Shop() {
   const [categoryProducts, setCategoryProducts] = useState(null)
   const [categoryLoading, setCategoryLoading] = useState(false)
   const [categoryError, setCategoryError] = useState('')
+  // True while categoryProducts is only the preloaded first page and the full
+  // category fetch hasn't landed yet.
+  const [categoryPartial, setCategoryPartial] = useState(false)
 
   const selectedCategoriesKey = selectedCategories.join('|')
 
@@ -156,8 +196,23 @@ export default function Shop() {
     }
 
     let cancelled = false
-    setCategoryLoading(true)
     setCategoryError('')
+
+    // Paint the preloaded first page straight away (see utils/preloadCategories)
+    // while the full fetch below runs. Only when that first page is what would
+    // be on screen anyway: page 1, default order, no price/search filter.
+    const preloaded =
+      page === 1 && sortBy === 'latest' && !minPrice && !maxPrice && !searchQuery.trim()
+        ? getPreloadedFirstPage(selectedCategories)
+        : null
+    if (preloaded && preloaded.length > 0) {
+      setCategoryProducts(preloaded)
+      setCategoryPartial(true)
+      setCategoryLoading(false)
+    } else {
+      setCategoryPartial(false)
+      setCategoryLoading(true)
+    }
 
     Promise.all(
       selectedCategories.map((cat) =>
@@ -179,9 +234,12 @@ export default function Shop() {
           }
         }
         setCategoryProducts(merged)
+        setCategoryPartial(false)
       })
       .catch(() => {
-        if (!cancelled) setCategoryError('Could not load products for this category right now.')
+        if (cancelled) return
+        setCategoryError('Could not load products for this category right now.')
+        setCategoryPartial(false)
       })
       .finally(() => {
         if (!cancelled) setCategoryLoading(false)
@@ -270,7 +328,8 @@ export default function Shop() {
             {pageCopy.title} <span className="font-normal text-neutral-400">&ndash;</span> {pageCopy.subtitle}
           </h1>
           <p className="mt-1.5 text-sm text-neutral-500">
-            {filtered.length} product{filtered.length === 1 ? '' : 's'}
+            {filtered.length}
+            {categoryPartial ? '+' : ''} product{filtered.length === 1 && !categoryPartial ? '' : 's'}
           </p>
         </div>
       </section>
@@ -317,6 +376,17 @@ export default function Shop() {
                       </label>
                     )
                   })}
+                  {extraCategories.map((raw) => (
+                    <label key={raw} className="flex items-start gap-2 py-1 text-sm text-neutral-600">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategories.includes(raw)}
+                        onChange={() => toggleExtraCategory(raw)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-brand-gold"
+                      />
+                      <span className="break-words">{displayCategoryName(raw)}</span>
+                    </label>
+                  ))}
                 </>
               )}
             </div>

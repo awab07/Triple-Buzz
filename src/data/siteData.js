@@ -166,8 +166,7 @@ export const categoryFilterMap = {
   Exotic: ['EXOTIC'],
   General: ['GENERAL'],
   'Gift Kit': ['GIFT KIT'],
-  // Snacks: no Lightspeed category backs this yet — intentionally left
-  // unmapped, per the note above, rather than guessing a wrong match.
+  Snacks: ['SNACKS'],
 }
 
 // Maps a raw backend category value (e.g. "GUMMIES", straight off a

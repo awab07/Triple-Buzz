@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext'
 import { useProducts } from '../context/ProductsContext'
 import { fetchBlogs } from '../lib/api'
 import { preloadHomePage } from '../utils/preloadHome'
+import { preloadCategoryLabel } from '../utils/preloadCategories'
 
 // Clean "/collections/:slug" URLs — matches the live triplebuzzsmokeshop.com
 // Shopify site (e.g. /collections/batteries) instead of exposing our
@@ -260,6 +261,7 @@ export default function Header() {
             >
               <Link
                 to={categoryHref(cat.label)}
+                onMouseEnter={() => preloadCategoryLabel(cat.label)}
                 className="flex items-center gap-1 py-2 transition-colors hover:text-brand-goldDark"
               >
                 {cat.label}
@@ -279,6 +281,7 @@ export default function Header() {
                       <li key={sub}>
                         <Link
                           to={categoryHref(sub)}
+                          onMouseEnter={() => preloadCategoryLabel(sub)}
                           className="block text-xs font-medium normal-case text-neutral-600 hover:text-brand-goldDark"
                         >
                           {sub}
